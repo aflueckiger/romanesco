@@ -28,16 +28,16 @@ def define_computation_graph(vocab_size: int, batch_size: int):
     #        cell, input_embeddings, initial_state=initial_state)
 
     with tf.name_scope('bidir_GRU_RNN'):
-    # define forward cell
+        # define forward cell
         cell_fw = tf.nn.rnn_cell.GRUCell(HIDDEN_SIZE)
         # define backward cell
         cell_bw = tf.nn.rnn_cell.GRUCell(HIDDEN_SIZE)
 
-        initial_state_fw = forward_cell.zero_state(batch_size, tf.float32)
-        initial_state_bw = backward_cell.zero_state(batch_size, tf.float32)
+        initial_state_fw = cell_fw.zero_state(batch_size, tf.float32)
+        initial_state_bw = cell_bw.zero_state(batch_size, tf.float32)
 
         bi_outputs, rnn_states = tf.nn.bidirectional_dynamic_rnn(
-            forward_cell, backward_cell, input_embeddings,
+            cell_fw, cell_bw, input_embeddings,
             initial_state_fw=initial_state_fw, initial_state_bw=initial_state_bw)
 
         rnn_outputs = tf.concat(bi_outputs, -1)

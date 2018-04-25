@@ -3,7 +3,7 @@
 import numpy as np
 import tensorflow as tf
 
-import const
+from romanesco import const
 
 
 def read_words(filename: str):
