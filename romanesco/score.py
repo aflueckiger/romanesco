@@ -34,5 +34,7 @@ def score(data: str, load_from: str, batch_size: int, **kwargs):
             l = session.run([loss], feed_dict={inputs: x, targets: y})
             total_loss += l[0]
             total_iter += 1
+            if total_iter % 100 == 0:
+                logging.debug("Iteration=%s", total_iter)
         perplexity = np.exp(total_loss / total_iter)
         return perplexity
