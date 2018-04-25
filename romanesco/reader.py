@@ -3,7 +3,7 @@
 import numpy as np
 import tensorflow as tf
 
-from romanesco import const
+import const
 
 
 def read_words(filename: str):
@@ -64,6 +64,7 @@ def iterate(raw_data, batch_size: int, num_steps: int):
            [12, 13]]   [13, 14]] )
     """
     data_len = len(raw_data)
+    # naming is a bit confusing, num_batches will splitted up further because of fixed time-steps
     num_batches = data_len // batch_size
 
     data = raw_data[0 : batch_size * num_batches] # cut off
@@ -81,6 +82,7 @@ def iterate(raw_data, batch_size: int, num_steps: int):
         s = i * num_steps # start
         e = s + num_steps # end
         yield data[:, s : e], data[:, s + 1 : e + 1]
+
 
         # ( [[the cat  ],  [[cat   sits],
         #    [the mat  ],   [mat   and ],
