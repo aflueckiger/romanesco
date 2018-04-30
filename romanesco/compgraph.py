@@ -8,7 +8,7 @@ from tensorflow.python.ops.functional_ops import map_fn
 from romanesco.const import *
 
 
-def define_computation_graph(vocab_size: int, batch_size: int):
+def define_computation_graph(vocab_size: int, batch_size: int, is_training: bool=False):
 
     # Placeholders for input and output
     inputs = tf.placeholder(tf.int32, shape=(
@@ -21,30 +21,49 @@ def define_computation_graph(vocab_size: int, batch_size: int):
             'word_embedding', [vocab_size, EMBEDDING_SIZE])
         input_embeddings = tf.nn.embedding_lookup(embedding, inputs)
 
-    # with tf.name_scope('RNN'):
+        if is_training and DROPOUT < 1:
+            input_embeddings = tf.nn.dropout(input_embeddings, DROPOUT)
+
+    # with tf.name_scope('simple_RNN'):
     #    cell = tf.nn.rnn_cell.BasicLSTMCell(HIDDEN_SIZE, state_is_tuple=True)
     #    initial_state = cell.zero_state(batch_size, tf.float32)
     #    rnn_outputs, rnn_states = tf.nn.dynamic_rnn(
     #        cell, input_embeddings, initial_state=initial_state)
 
-    with tf.name_scope('bidir_GRU_RNN'):
-        # define forward cell
-        cell_fw = tf.nn.rnn_cell.GRUCell(HIDDEN_SIZE)
-        # define backward cell
-        cell_bw = tf.nn.rnn_cell.GRUCell(HIDDEN_SIZE)
+    # with tf.name_scope('bidir_GRU_RNN'):
+    #    # define forward cell (use only half of length due to bidirectionality)
+    #    cell_fw = tf.nn.rnn_cell.GRUCell(HIDDEN_SIZE/2)
+    #    # define backward cell (use only half of length due to bidirectionality)
+    #    cell_bw = tf.nn.rnn_cell.GRUCell(HIDDEN_SIZE/2)
 
-        initial_state_fw = cell_fw.zero_state(batch_size, tf.float32)
-        initial_state_bw = cell_bw.zero_state(batch_size, tf.float32)
+    #    initial_state_fw = cell_fw.zero_state(batch_size, tf.float32)
+    #    initial_state_bw = cell_bw.zero_state(batch_size, tf.float32)
 
-        bi_outputs, rnn_states = tf.nn.bidirectional_dynamic_rnn(
-            cell_fw, cell_bw, input_embeddings,
-            initial_state_fw=initial_state_fw, initial_state_bw=initial_state_bw)
+    #    bi_outputs, rnn_states = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, input_embeddings, initial_state_fw=initial_state_fw, initial_state_bw=initial_state_bw)
 
-        rnn_outputs = tf.concat(bi_outputs, -1)
+    #    rnn_outputs = tf.concat(bi_outputs, -1)
+
+    with tf.name_scope('stacked_GRU_RNN'):
+
+        def cell():
+            # define GRU cell with dropout
+            cell = tf.contrib.rnn.GRUCell(HIDDEN_SIZE)
+            if is_training and DROPOUT < 1:
+                cell = tf.contrib.rnn.DropoutWrapper(
+                    cell, output_keep_prob=DROPOUT)
+            return cell
+
+        # stack multiple layers
+        stacked_gru = tf.contrib.rnn.MultiRNNCell(
+            [cell() for _ in range(NUM_LAYERS)])
+
+        initial_state = stacked_gru.zero_state(batch_size, tf.float32)
+
+        rnn_outputs, rnn_states = tf.nn.dynamic_rnn(
+            stacked_gru, input_embeddings, initial_state=initial_state)
 
     with tf.name_scope('Final_Projection'):
-        # doubling length because of bidirectionality
-        w = tf.get_variable('w', shape=(HIDDEN_SIZE * 2, vocab_size))
+        w = tf.get_variable('w', shape=(HIDDEN_SIZE, vocab_size))
         b = tf.get_variable('b', vocab_size)
 
         def final_projection(x): return tf.matmul(x, w) + b

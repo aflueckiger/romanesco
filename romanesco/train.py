@@ -30,7 +30,7 @@ def train(data: str, epochs: int, batch_size: int, vocab_max_size: int,
     raw_data = reader.read(data, vocab)
 
     # define computation graph
-    inputs, targets, loss, train_step, _, summary = define_computation_graph(vocab.size, batch_size)
+    inputs, targets, loss, train_step, _, summary = define_computation_graph(vocab.size, batch_size, is_training=True)
 
     saver = tf.train.Saver()
 
